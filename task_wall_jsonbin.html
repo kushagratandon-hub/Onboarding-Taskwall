@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Task Wall — DCF Ops</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#f4f6fb;--surface:#fff;--border:#e4e8f0;--text:#0f172a;--muted:#64748b;
+  --accent:#6366f1;--accent-light:#eef2ff;
+  --green:#16a34a;--green-light:#f0fdf4;
+  --amber:#d97706;--amber-light:#fffbeb;
+  --red:#dc2626;--red-light:#fef2f2;
+  --blue:#0ea5e9;--blue-light:#f0f9ff;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+
+.topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 28px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-icon{width:34px;height:34px;background:var(--accent);border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px}
+.brand-name{font-weight:700;font-size:15px}
+.brand-sub{font-size:11px;color:var(--muted)}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#94a3b8;animation:pulse 1.5s infinite;transition:background .3s}
+.live-dot.on{background:var(--green)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.live-lbl{font-size:12px;color:var(--muted);font-weight:600}
+.live-lbl.on{color:var(--green)}
+.sync-lbl{font-size:11px;color:var(--muted);background:#f1f5f9;padding:2px 8px;border-radius:10px}
+.time-lbl{font-size:12px;color:var(--muted)}
+
+.main{max-width:1300px;margin:0 auto;padding:22px 20px}
+
+/* SETUP */
+.overlay{position:fixed;inset:0;background:rgba(15,23,42,.75);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px}
+.setup-box{background:#fff;border-radius:16px;padding:28px 32px;max-width:500px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.2)}
+.setup-box h2{font-size:17px;font-weight:700;margin-bottom:6px}
+.setup-box p{font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.65}
+.steps{background:#f8fafc;border-radius:10px;padding:14px 16px;margin-bottom:14px;font-size:12px;line-height:2.1;border:1px solid var(--border)}
+.steps b{color:var(--accent)}
+.setup-inp{width:100%;border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-family:'Inter',sans-serif;font-size:13px;margin-bottom:10px;outline:none;transition:border-color .15s}
+.setup-inp:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+.btn-connect{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:11px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;width:100%}
+.btn-connect:hover{background:#4f46e5}
+.btn-connect:disabled{opacity:.5;cursor:wait}
+.err-msg{background:var(--red-light);color:var(--red);border-radius:8px;padding:10px 14px;font-size:12px;margin-top:10px;display:none}
+
+/* ADD CARD */
+.add-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:20px;box-shadow:0 1px 4px rgba(0,0,0,.04)}
+.section-label{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px}
+.form-row{display:grid;grid-template-columns:2fr 1fr 1fr 1.3fr auto;gap:10px;align-items:end}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+select,input[type=text]{border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);background:#fff;outline:none;transition:border-color .15s;width:100%}
+select:focus,input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+.btn-add{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;height:40px}
+.btn-add:hover{background:#4f46e5}
+.btn-add:disabled{opacity:.5;cursor:wait}
+
+.members-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.ml{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:flex;align-items:center;gap:5px;border-radius:20px;padding:4px 10px;font-size:12px;font-weight:500;border:1px solid}
+.chip-x{background:none;border:none;cursor:pointer;font-size:14px;color:#a5b4fc;padding:0;line-height:1}
+.chip-x:hover{color:var(--red)}
+.member-inp{max-width:190px}
+.btn-addm{background:var(--green-light);color:var(--green);border:1px solid #bbf7d0;border-radius:8px;padding:7px 14px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer}
+.btn-addm:hover{background:#dcfce7}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 20px;border-top:3px solid}
+.stat.s-t{border-top-color:var(--accent)}.stat.s-o{border-top-color:var(--green)}
+.stat.s-p{border-top-color:var(--amber)}.stat.s-b{border-top-color:var(--red)}
+.stat-n{font-size:28px;font-weight:800;line-height:1}
+.stat-l{font-size:11px;color:var(--muted);margin-top:4px;font-weight:500;text-transform:uppercase;letter-spacing:.05em}
+
+.filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.flbl{font-size:12px;font-weight:600;color:var(--muted)}
+.fbtn{border:1px solid var(--border);background:#fff;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:500;cursor:pointer;color:var(--muted);font-family:'Inter',sans-serif;transition:all .15s}
+.fbtn:hover{border-color:var(--accent);color:var(--accent)}
+.fbtn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.fsel{border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:12px;background:#fff;outline:none;font-family:'Inter',sans-serif;min-width:130px}
+
+.wall{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.tcard{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04);transition:box-shadow .2s}
+.tcard:hover{box-shadow:0 4px 16px rgba(0,0,0,.08)}
+.tcard-top{padding:14px 16px 10px}
+.type-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em}
+.tcard-title{font-size:14px;font-weight:600;margin-bottom:4px}
+.tcard-note{font-size:12px;color:var(--muted);margin-bottom:10px}
+.tcard-meta{display:flex;align-items:center;justify-content:space-between}
+.av-row{display:flex;align-items:center;gap:6px}
+.av{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
+.av-name{font-size:12px;font-weight:500;color:var(--muted)}
+.tcard-date{font-size:11px;color:var(--muted)}
+.tcard-bottom{padding:10px 16px 14px;border-top:1px solid #f1f5f9;display:flex;gap:8px;align-items:center}
+.status-sel{border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;outline:none;flex:1}
+.ss-on{background:var(--green-light);color:var(--green);border-color:#bbf7d0}
+.ss-pend{background:var(--amber-light);color:var(--amber);border-color:#fde68a}
+.ss-done{background:var(--blue-light);color:var(--blue);border-color:#bae6fd}
+.ss-block{background:var(--red-light);color:var(--red);border-color:#fecaca}
+.btn-del{background:#fef2f2;border:1px solid #fecaca;color:var(--red);border-radius:7px;padding:6px 12px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif}
+.btn-del:hover{background:#fee2e2}
+
+.t-vpd{background:#ede9fe;color:#6d28d9}.t-elec{background:#fef9c3;color:#854d0e}
+.t-udyam{background:#dcfce7;color:#166534}.t-sfi{background:#dbeafe;color:#1e40af}
+.t-vfi{background:#fce7f3;color:#9d174d}.t-other{background:#f1f5f9;color:#475569}
+
+.empty{text-align:center;padding:60px 20px;color:var(--muted);grid-column:1/-1}
+.empty-icon{font-size:40px;margin-bottom:10px}
+
+.toast{position:fixed;bottom:24px;right:24px;background:#0f172a;color:#fff;border-radius:10px;padding:12px 18px;font-size:13px;font-weight:500;z-index:999;opacity:0;transform:translateY(8px);transition:all .3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+
+@media(max-width:900px){.form-row{grid-template-columns:1fr 1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.form-row{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<!-- SETUP -->
+<div class="overlay" id="overlay">
+  <div class="setup-box">
+    <h2>🔑 One-Time Setup — 2 Minutes</h2>
+    <p>Uses <b>JSONBin.io</b> — a free storage API. No account restrictions, works with any email. Everyone with the dashboard link sees live updates.</p>
+    <div class="steps">
+      <b>Step 1:</b> Go to <a href="https://jsonbin.io" target="_blank" style="color:var(--accent)">jsonbin.io</a> → Sign up free (any email)<br>
+      <b>Step 2:</b> After login → click your profile → <b>API Keys</b> → copy the <b>Master Key</b> (starts with <code style="background:#e2e8f0;padding:1px 5px;border-radius:3px">$2b$10$...</code>)<br>
+      <b>Step 3:</b> Paste it below and click Connect — done!
+    </div>
+    <label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:6px">JSONBIN MASTER KEY</label>
+    <input class="setup-inp" id="jb-key" placeholder="$2b$10$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" type="password">
+    <button class="btn-connect" id="btn-connect" onclick="connectJSONBin()">Connect & Start</button>
+    <div class="err-msg" id="err-msg"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="topbar">
+  <div class="brand">
+    <div class="brand-icon">TW</div>
+    <div>
+      <div class="brand-name">Task Wall</div>
+      <div class="brand-sub">DCF Ops — Live Board</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="live-dot" id="live-dot"></div>
+    <span class="live-lbl" id="live-lbl">Connecting</span>
+    <span class="sync-lbl" id="sync-lbl">—</span>
+    <span class="time-lbl" id="clock">—</span>
+  </div>
+</div>
+
+<div class="main">
+  <div class="add-card">
+    <div class="section-label">➕ New Task</div>
+    <div class="form-row">
+      <div class="fg">
+        <label>Task Type</label>
+        <select id="task-type" onchange="toggleCustom()">
+          <option>VPD Pending</option>
+          <option>Electricity Bill Pending</option>
+          <option>Udyam Aadhar Update Pending</option>
+          <option>Sales FI Raised</option>
+          <option>Vendor FI Raised</option>
+          <option>Vendor FI Result Pending</option>
+          <option>Reraise the Vendor FI</option>
+          <option>Others</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Assign To</label>
+        <select id="assignee"></select>
+      </div>
+      <div class="fg">
+        <label>Status</label>
+        <select id="new-status">
+          <option>Pending</option>
+          <option>On Track</option>
+          <option>Done</option>
+          <option>Blocked</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Note (optional)</label>
+        <input type="text" id="task-note" placeholder="Add a note...">
+      </div>
+      <button class="btn-add" id="btn-add" onclick="addTask()">Add Task</button>
+    </div>
+    <div id="custom-row" style="display:none;margin-top:10px">
+      <div class="fg">
+        <label>Custom Task</label>
+        <input type="text" id="custom-task" placeholder="Describe the task...">
+      </div>
+    </div>
+    <div class="members-row">
+      <span class="ml">Team:</span>
+      <div class="chips" id="chips"></div>
+      <input type="text" id="new-member" class="member-inp" placeholder="Add new member..." onkeydown="if(event.key==='Enter')addMember()">
+      <button class="btn-addm" onclick="addMember()">+ Add</button>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat s-t"><div class="stat-n" id="st-t">0</div><div class="stat-l">Total Tasks</div></div>
+    <div class="stat s-o"><div class="stat-n" id="st-o">0</div><div class="stat-l">On Track</div></div>
+    <div class="stat s-p"><div class="stat-n" id="st-p">0</div><div class="stat-l">Pending</div></div>
+    <div class="stat s-b"><div class="stat-n" id="st-b">0</div><div class="stat-l">Blocked</div></div>
+  </div>
+
+  <div class="filters">
+    <span class="flbl">Filter:</span>
+    <button class="fbtn active" onclick="setFilter('All',this)">All</button>
+    <button class="fbtn" onclick="setFilter('On Track',this)">✅ On Track</button>
+    <button class="fbtn" onclick="setFilter('Pending',this)">⏳ Pending</button>
+    <button class="fbtn" onclick="setFilter('Done',this)">☑️ Done</button>
+    <button class="fbtn" onclick="setFilter('Blocked',this)">🚫 Blocked</button>
+    <span class="flbl" style="margin-left:6px">Assignee:</span>
+    <select class="fsel" id="filter-assignee" onchange="renderWall()"><option value="">Everyone</option></select>
+  </div>
+
+  <div class="wall" id="wall">
+    <div class="empty"><div class="empty-icon">🔑</div><div>Connect JSONBin above to start.</div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let API_KEY = '';
+let BIN_ID  = '';
+let state   = { tasks: [], members: ['Simran','Kajal','Gulshan','Zakir'] };
+let filterStatus = 'All';
+let pollTimer = null;
+let saving = false;
+
+const JSONBIN_BASE = 'https://api.jsonbin.io/v3';
+
+const COLORS=['#6366f1','#16a34a','#dc2626','#d97706','#0891b2','#7c3aed','#db2777','#0369a1'];
+const avatarColor=n=>{let h=0;for(let c of(n||''))h=(h*31+c.charCodeAt(0))%COLORS.length;return COLORS[h];};
+const initials=n=>(n||'??').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+function typeBadge(t){
+  if(t.includes('VPD'))return 't-vpd';
+  if(t.includes('Electricity'))return 't-elec';
+  if(t.includes('Udyam'))return 't-udyam';
+  if(t.includes('Sales FI'))return 't-sfi';
+  if(t.includes('Vendor')||t.includes('Reraise'))return 't-vfi';
+  return 't-other';
+}
+function statusClass(s){
+  return s==='On Track'?'ss-on':s==='Pending'?'ss-pend':s==='Done'?'ss-done':s==='Blocked'?'ss-block':'';
+}
+
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2400);
+}
+function tick(){
+  document.getElementById('clock').textContent=
+    new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit',hour12:true})+' IST';
+}
+setInterval(tick,1000);tick();
+
+function setLive(on){
+  document.getElementById('live-dot').className='live-dot'+(on?' on':'');
+  const l=document.getElementById('live-lbl');
+  l.textContent=on?'Live':'Syncing';
+  l.className='live-lbl'+(on?' on':'');
+}
+
+// ── JSONBIN API ──
+async function jbGet(){
+  const r=await fetch(`${JSONBIN_BASE}/b/${BIN_ID}/latest`,{
+    headers:{'X-Master-Key':API_KEY,'X-Bin-Meta':false}
+  });
+  if(!r.ok)throw new Error('Fetch failed '+r.status);
+  return r.json();
+}
+async function jbPut(data){
+  const r=await fetch(`${JSONBIN_BASE}/b/${BIN_ID}`,{
+    method:'PUT',
+    headers:{'Content-Type':'application/json','X-Master-Key':API_KEY},
+    body:JSON.stringify(data)
+  });
+  if(!r.ok)throw new Error('Save failed '+r.status);
+  return r.json();
+}
+async function jbCreate(data){
+  const r=await fetch(`${JSONBIN_BASE}/b`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','X-Master-Key':API_KEY,'X-Bin-Name':'DCF-TaskWall','X-Bin-Private':false},
+    body:JSON.stringify(data)
+  });
+  if(!r.ok)throw new Error('Create failed '+r.status);
+  return r.json();
+}
+
+// ── CONNECT ──
+async function connectJSONBin(){
+  const key=document.getElementById('jb-key').value.trim();
+  if(!key){showErr('Paste your Master Key first.');return;}
+  API_KEY=key;
+  const btn=document.getElementById('btn-connect');
+  btn.disabled=true;btn.textContent='Connecting...';
+
+  try{
+    const saved=localStorage.getItem('jb_bin_id');
+    if(saved){
+      BIN_ID=saved;
+      // verify it still exists
+      const data=await jbGet();
+      state=data;
+    } else {
+      // create new bin
+      const res=await jbCreate(state);
+      BIN_ID=res.metadata.id;
+      localStorage.setItem('jb_bin_id',BIN_ID);
+    }
+    localStorage.setItem('jb_key',btoa(key)); // store obfuscated
+    document.getElementById('overlay').style.display='none';
+    setLive(true);
+    renderAll();
+    startPolling();
+    toast('✅ Connected! Share this dashboard link with your team.');
+  }catch(e){
+    btn.disabled=false;btn.textContent='Connect & Start';
+    showErr('Error: '+e.message+'. Check your Master Key.');
+    console.error(e);
+  }
+}
+
+function showErr(msg){
+  const el=document.getElementById('err-msg');
+  el.textContent=msg;el.style.display='block';
+}
+
+// ── SAVE STATE ──
+async function saveState(){
+  if(saving)return;
+  saving=true;
+  try{
+    await jbPut(state);
+    const now=new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit',hour12:true});
+    document.getElementById('sync-lbl').textContent='Saved '+now;
+    setLive(true);
+  }catch(e){
+    setLive(false);
+    console.error('Save error',e);
+  }
+  saving=false;
+}
+
+// ── POLL every 8s for changes from other users ──
+function startPolling(){
+  if(pollTimer)clearInterval(pollTimer);
+  pollTimer=setInterval(async()=>{
+    if(!BIN_ID||!API_KEY)return;
+    try{
+      const fresh=await jbGet();
+      // only re-render if data actually changed
+      if(JSON.stringify(fresh)!==JSON.stringify(state)){
+        state=fresh;
+        renderAll();
+        rebuildMemberSelects();
+        renderChips();
+      }
+      const now=new Date().toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit',hour12:true});
+      document.getElementById('sync-lbl').textContent='Synced '+now;
+      setLive(true);
+    }catch(e){ setLive(false); }
+  },8000);
+}
+
+// ── TASK OPS ──
+async function addTask(){
+  if(!BIN_ID){toast('Connect first');return;}
+  const type=document.getElementById('task-type').value;
+  const custom=document.getElementById('custom-task').value.trim();
+  const label=type==='Others'?(custom||'Others'):type;
+  const who=document.getElementById('assignee').value;
+  const status=document.getElementById('new-status').value;
+  const note=document.getElementById('task-note').value.trim();
+  if(!who){toast('Select an assignee');return;}
+  const btn=document.getElementById('btn-add');
+  btn.disabled=true;btn.textContent='Adding...';
+  state.tasks.unshift({
+    id:Date.now(),label,who,status,note,
+    created:new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})
+  });
+  await saveState();
+  btn.disabled=false;btn.textContent='Add Task';
+  document.getElementById('task-note').value='';
+  document.getElementById('custom-task').value='';
+  renderAll();
+  toast('✅ Task added — visible to everyone');
+}
+
+async function deleteTask(id){
+  state.tasks=state.tasks.filter(t=>t.id!==id);
+  await saveState();
+  renderAll();
+  toast('🗑️ Deleted');
+}
+
+async function updateStatus(id,val){
+  const clean=val.replace(/^[^\w]+/,'').trim();
+  const t=state.tasks.find(t=>t.id===id);
+  if(t){t.status=clean;}
+  await saveState();
+  renderAll();
+  toast('Updated → '+clean);
+}
+
+// ── MEMBER OPS ──
+async function addMember(){
+  if(!BIN_ID){toast('Connect first');return;}
+  const val=document.getElementById('new-member').value.trim();
+  if(!val)return;
+  if(state.members.includes(val)){toast('Already in team');return;}
+  state.members.push(val);
+  await saveState();
+  document.getElementById('new-member').value='';
+  rebuildMemberSelects();
+  renderChips();
+  toast('👤 '+val+' added');
+}
+async function removeMember(name){
+  state.members=state.members.filter(m=>m!==name);
+  await saveState();
+  rebuildMemberSelects();
+  renderChips();
+}
+
+function renderChips(){
+  document.getElementById('chips').innerHTML=(state.members||[]).map(m=>`
+    <div class="chip" style="background:${avatarColor(m)}22;border-color:${avatarColor(m)}55;color:${avatarColor(m)}">
+      <div class="av" style="background:${avatarColor(m)};width:18px;height:18px;font-size:9px">${initials(m)}</div>
+      ${m}
+      <button class="chip-x" onclick="removeMember('${m}')">×</button>
+    </div>`).join('');
+}
+
+function rebuildMemberSelects(){
+  const opts=(state.members||[]).map(m=>`<option value="${m}">${m}</option>`).join('');
+  document.getElementById('assignee').innerHTML=opts||'<option>—</option>';
+  const fa=document.getElementById('filter-assignee');
+  const cur=fa.value;
+  fa.innerHTML='<option value="">Everyone</option>'+opts;
+  if((state.members||[]).includes(cur))fa.value=cur;
+}
+
+function setFilter(s,btn){
+  filterStatus=s;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderWall();
+}
+
+function renderAll(){
+  renderStats();
+  renderWall();
+  renderChips();
+  rebuildMemberSelects();
+}
+
+function renderStats(){
+  const t=state.tasks||[];
+  document.getElementById('st-t').textContent=t.length;
+  document.getElementById('st-o').textContent=t.filter(x=>x.status==='On Track').length;
+  document.getElementById('st-p').textContent=t.filter(x=>x.status==='Pending').length;
+  document.getElementById('st-b').textContent=t.filter(x=>x.status==='Blocked').length;
+}
+
+function renderWall(){
+  const af=document.getElementById('filter-assignee').value;
+  const list=(state.tasks||[]).filter(t=>{
+    if(filterStatus!=='All'&&t.status!==filterStatus)return false;
+    if(af&&t.who!==af)return false;
+    return true;
+  });
+  const wall=document.getElementById('wall');
+  if(!list.length){
+    wall.innerHTML=`<div class="empty"><div class="empty-icon">📋</div><div>No tasks here. Add one above.</div></div>`;
+    return;
+  }
+  wall.innerHTML=list.map(t=>`
+    <div class="tcard">
+      <div class="tcard-top">
+        <span class="type-badge ${typeBadge(t.label)}">${t.label}</span>
+        <div class="tcard-title">${t.label}</div>
+        ${t.note?`<div class="tcard-note">${t.note}</div>`:''}
+        <div class="tcard-meta">
+          <div class="av-row">
+            <div class="av" style="background:${avatarColor(t.who)}">${initials(t.who)}</div>
+            <span class="av-name">${t.who||'—'}</span>
+          </div>
+          <span class="tcard-date">${t.created||''}</span>
+        </div>
+      </div>
+      <div class="tcard-bottom">
+        <select class="status-sel ${statusClass(t.status)}" onchange="updateStatus(${t.id},this.value)">
+          <option ${t.status==='Pending'?'selected':''}>⏳ Pending</option>
+          <option ${t.status==='On Track'?'selected':''}>✅ On Track</option>
+          <option ${t.status==='Done'?'selected':''}>☑️ Done</option>
+          <option ${t.status==='Blocked'?'selected':''}>🚫 Blocked</option>
+        </select>
+        <button class="btn-del" onclick="deleteTask(${t.id})">Delete</button>
+      </div>
+    </div>`).join('');
+
+  // fix select display values
+  list.forEach((t,i)=>{
+    const sel=wall.querySelectorAll('.status-sel')[i];
+    const map={'Pending':'⏳ Pending','On Track':'✅ On Track','Done':'☑️ Done','Blocked':'🚫 Blocked'};
+    if(sel){sel.value=map[t.status]||t.status;sel.className='status-sel '+statusClass(t.status);}
+  });
+}
+
+function toggleCustom(){
+  document.getElementById('custom-row').style.display=
+    document.getElementById('task-type').value==='Others'?'block':'none';
+}
+
+// ── AUTO RECONNECT ──
+window.addEventListener('load',()=>{
+  const savedKey=localStorage.getItem('jb_key');
+  const savedBin=localStorage.getItem('jb_bin_id');
+  if(savedKey&&savedBin){
+    try{
+      API_KEY=atob(savedKey);
+      BIN_ID=savedBin;
+      document.getElementById('jb-key').value=API_KEY;
+      // silently connect
+      jbGet().then(data=>{
+        state=data;
+        document.getElementById('overlay').style.display='none';
+        setLive(true);
+        renderAll();
+        startPolling();
+      }).catch(()=>{});
+    }catch(e){}
+  }
+});
+</script>
+</body>
+</html>
